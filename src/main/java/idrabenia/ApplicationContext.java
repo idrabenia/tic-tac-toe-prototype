@@ -1,5 +1,6 @@
 package idrabenia;
 
+import akka.actor.ActorRef;
 import idrabenia.domain.Game;
 import idrabenia.domain.Player;
 import org.cometd.bayeux.server.ServerSession;
@@ -14,9 +15,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class ApplicationContext {
     private final CopyOnWriteArrayList<String> freePlayers = new CopyOnWriteArrayList<String>();
-    private final ConcurrentHashMap<String, Game> games = new ConcurrentHashMap<String, Game>();
+    private final ConcurrentHashMap<String, ActorRef> games = new ConcurrentHashMap<String, ActorRef>();
     private final ConcurrentHashMap<String, ServerSession> sessions = new ConcurrentHashMap<String, ServerSession>();
-    private final List<Game> upcomingGames = new CopyOnWriteArrayList<Game>();
+    private final List<ActorRef> upcomingGames = new CopyOnWriteArrayList<ActorRef>();
 
     private static final ApplicationContext instance = new ApplicationContext();
 
@@ -28,7 +29,7 @@ public class ApplicationContext {
         return freePlayers;
     }
 
-    public ConcurrentHashMap<String, Game> getGames() {
+    public ConcurrentHashMap<String, ActorRef> getGames() {
         return games;
     }
 
@@ -36,7 +37,7 @@ public class ApplicationContext {
         return sessions;
     }
 
-    public List<Game> getUpcomingGames() {
+    public List<ActorRef> getUpcomingGames() {
         return upcomingGames;
     }
 }

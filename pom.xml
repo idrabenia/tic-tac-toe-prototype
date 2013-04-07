@@ -9,6 +9,17 @@
     <packaging>war</packaging>
     <version>1.0-SNAPSHOT</version>
 
+    <properties>
+        <akka.version>2.0.1</akka.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>typesafe-releases</id>
+            <url>http://repo.typesafe.com/typesafe/releases</url>
+        </repository>
+    </repositories>
+
     <build>
         <defaultGoal>install</defaultGoal>
         <plugins>
@@ -25,7 +36,7 @@
                 <version>2.1.1</version>
                 <configuration>
                     <overlays>
-                        <overlay />
+                        <overlay/>
                         <overlay>
                             <groupId>org.cometd.javascript</groupId>
                             <artifactId>cometd-javascript-jquery</artifactId>
@@ -116,6 +127,11 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-actor</artifactId>
+            <version>${akka.version}</version>
         </dependency>
     </dependencies>
 

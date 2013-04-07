@@ -25,17 +25,20 @@ import javax.servlet.ServletResponse;
 
 import org.cometd.bayeux.server.BayeuxServer;
 
-public class BayeuxInitializer extends GenericServlet
-{
-    public void init() throws ServletException
-    {
-        BayeuxServer bayeux = (BayeuxServer)getServletContext().getAttribute(BayeuxServer.ATTRIBUTE);
-        new HelloService(bayeux);
-        new GameService(bayeux);
+public class BayeuxInitializer extends GenericServlet {
+    private static volatile GameService gameService;
+
+    public static GameService getGameService() {
+        return gameService;
     }
 
-    public void service(ServletRequest request, ServletResponse response) throws ServletException, IOException
-    {
+    public void init() throws ServletException {
+        BayeuxServer bayeux = (BayeuxServer) getServletContext().getAttribute(BayeuxServer.ATTRIBUTE);
+        new HelloService(bayeux);
+        gameService = new GameService(bayeux);
+    }
+
+    public void service(ServletRequest request, ServletResponse response) throws ServletException, IOException {
         throw new ServletException();
     }
 }

@@ -1,6 +1,13 @@
 package idrabenia.bayeux;
 
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.actor.Props;
+import akka.dispatch.Future;
+import akka.dispatch.OnSuccess;
+import akka.pattern.Patterns;
 import idrabenia.ApplicationContext;
+import idrabenia.actors.GameActor;
 import idrabenia.domain.Game;
 import org.cometd.bayeux.Message;
 import org.cometd.bayeux.server.BayeuxServer;
@@ -9,8 +16,7 @@ import org.cometd.server.AbstractService;
 
 import java.beans.IndexedPropertyChangeEvent;
 import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -37,57 +43,31 @@ public class GameService extends AbstractService {
         ApplicationContext.get().getSessions().put(curPlayer, remote);
 
         synchronized (ApplicationContext.get().getUpcomingGames()) {
-            List<Game> upcomingGames = ApplicationContext.get().getUpcomingGames();
+            List<ActorRef> upcomingGames = ApplicationContext.get().getUpcomingGames();
 
             if (upcomingGames.size() > 0) {
-                Game curGame = upcomingGames.remove(0);
+                ActorRef curGame = upcomingGames.remove(0);
 
-                curGame.setPlayer2(curPlayer);
+                curGame.tell(new GameActor.SetSecondPlayerMessage(curPlayer));
                 ApplicationContext.get().getGames().put(curPlayer, curGame);
             } else {
-                Game newGame = createNewGame(curPlayer);
+                ActorRef newGame = ActorSystem.create("TicTacToe").actorOf(new Props(GameActor.class));
+                newGame.tell(new GameActor.NewGameMessage(curPlayer));
 
                 upcomingGames.add(newGame);
-                onGameUpcoming(newGame);
+
+                Future future = Patterns.ask(newGame, "getFirstPlayer", 5000);
+                future.onSuccess(new OnSuccess<String>() {
+
+                    public void onSuccess(String firstPlayer) {
+                        onGameUpcoming(firstPlayer);
+                    }
+
+                });
 
                 ApplicationContext.get().getGames().put(curPlayer, newGame);
             }
         }
-    }
-
-    public Game createNewGame(String player) {
-        final Game newGame = new Game(player);
-
-        PropertyChangeSupport gamePublisher = newGame.getPublisher();
-        gamePublisher.addPropertyChangeListener("gameFinished", new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                onGameFinished(getServerSession(), evt);
-            }
-        });
-
-        gamePublisher.addPropertyChangeListener("gameStarted", new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                onGameStarted(getServerSession(), (Game) evt.getSource());
-            }
-        });
-
-        gamePublisher.addPropertyChangeListener("nextStepPlayer", new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                onNextStepPlayerChanged(newGame, evt);
-            }
-        });
-
-        newGame.getTable().getPublisher().addPropertyChangeListener("cells", new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                onCellMarked(newGame, (IndexedPropertyChangeEvent) evt);
-            }
-        });
-
-        return newGame;
     }
 
     public void markCell(ServerSession remote, Message message) {
@@ -97,42 +77,39 @@ public class GameService extends AbstractService {
         int cellNumber = Integer.parseInt((String) input.get("cellNumber"));
         ApplicationContext.get().getSessions().put(curPlayer, remote);
 
-        Game curGame = ApplicationContext.get().getGames().get(curPlayer);
+        ActorRef curGame = ApplicationContext.get().getGames().get(curPlayer);
 
-        curGame.markCell(curPlayer, cellNumber);
+        curGame.tell(new GameActor.MarkCellMessage(cellNumber, curPlayer));
     }
 
-    public void onGameUpcoming(Game game) {
-        clientGateway.deliver(game.getPlayer1(), "/game/onUpcoming", "gameState", "Upcoming");
+    public void onGameUpcoming(String player1) {
+        clientGateway.deliver(player1, "/game/onUpcoming", "gameState", "Upcoming");
     }
 
-    public void onGameStarted(ServerSession remote, Game newGame) {
-        clientGateway.deliver(newGame.getPlayers(), "/game/onStarted",
+    public void onGameStarted(String player1, String player2) {
+        clientGateway.deliver(Arrays.asList(player1, player2), "/game/onStarted",
                 "gameState", "Running",
-                "player1", newGame.getPlayer1(),
-                "player2", newGame.getPlayer2(),
-                "nextStepPlayer", newGame.getPlayer1());
+                "player1", player1,
+                "player2", player2,
+                "nextStepPlayer", player1);
     }
 
-    public void onGameFinished(ServerSession remote, PropertyChangeEvent event) {
-        Game curGame = (Game) event.getSource();
-
-        clientGateway.deliver(curGame.getPlayers(), "/game/onFinished",
+    public void onGameFinished(ActorRef curGame, List<String> players, String winnerPlayer) {
+        clientGateway.deliver(players, "/game/onFinished",
                 "gameState", "Finished",
-                "winner", curGame.getWinnerName());
+                "winner", winnerPlayer);
 
         ApplicationContext.get().getGames().remove(curGame);
     }
 
-    public void onCellMarked(Game game, IndexedPropertyChangeEvent event) {
-        clientGateway.deliver(game.getPlayers(), "/game/onCellMarked",
-                "markedCell", event.getIndex(),
-                "markType", event.getNewValue().toString());
+    public void onCellMarked(List<String> players, int index, String markType) {
+        clientGateway.deliver(players, "/game/onCellMarked",
+                "markedCell", index,
+                "markType", markType);
     }
 
-    public void onNextStepPlayerChanged(Game game, PropertyChangeEvent event) {
-        clientGateway.deliver(game.getPlayers(), "/game/onNextStepPlayerChanged",
-                "nextStepPlayer", game.getNextStepPlayer());
+    public void onNextStepPlayerChanged(List<String> players, String nextStepPlayer) {
+        clientGateway.deliver(players, "/game/onNextStepPlayerChanged", "nextStepPlayer", nextStepPlayer);
     }
 
 }
