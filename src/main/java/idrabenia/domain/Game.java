@@ -12,13 +12,13 @@ import java.util.List;
  * @since 09.03.13
  */
 public class Game {
-    private final String player1;
-    private volatile String player2;
-    private volatile GameState state = GameState.UPCOMING;
-    private final Table table = new Table();
-    private volatile String nextStepPlayer;
+    private String player1;
+    private String player2;
+    private GameState state = GameState.UPCOMING;
+    private Table table = new Table();
+    private String nextStepPlayer;
 
-    private final PropertyChangeSupport publisher = new PropertyChangeSupport(this);
+    private PropertyChangeSupport publisher = new PropertyChangeSupport(this);
 
     public Game(String player1Value) {
         player1 = player1Value;
@@ -33,7 +33,7 @@ public class Game {
         return player2;
     }
 
-    public synchronized void setPlayer2(String player2Value) {
+    public void setPlayer2(String player2Value) {
         if (this.player2 == null) {
             this.player2 = player2Value;
 
@@ -50,7 +50,7 @@ public class Game {
         return publisher;
     }
 
-    public synchronized void markCell(String player, int number) {
+    public void markCell(String player, int number) {
         if (!nextStepPlayer.equals(player) || state != GameState.RUNNING) {
             return;
         }
@@ -75,7 +75,7 @@ public class Game {
         return newState;
     }
 
-    public synchronized void checkWinCombinations() {
+    public void checkWinCombinations() {
         if (table.isGameFinished()) {
             state = GameState.FINISHED;
 
@@ -98,7 +98,7 @@ public class Game {
         }
     }
 
-    public synchronized void computeNextStepPlayer() {
+    public void computeNextStepPlayer() {
         if (nextStepPlayer.equals(player1)) {
             nextStepPlayer = player2;
             publisher.firePropertyChange("nextStepPlayer", player1, player2);

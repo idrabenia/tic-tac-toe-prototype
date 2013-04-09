@@ -5,8 +5,8 @@ package idrabenia.domain.table;
  * @since 09.03.13
  */
 public class Cell {
-    private final int number;
-    private volatile CellState state;
+    private int number;
+    private CellState state;
 
     public Cell(int number) {
         this.number = number;
